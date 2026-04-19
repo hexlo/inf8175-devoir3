@@ -28,7 +28,7 @@ class PerceptronModel(object):
             x: a node with shape (1 x dimensions)
         Returns: a node containing a single number (the score)
         """
-        "*** TODO: COMPLETE HERE FOR QUESTION 1 ***"
+        return nn.DotProduct(x, self.w)
 
     def get_prediction(self, x: nn.Constant) -> int:
         """
@@ -36,13 +36,24 @@ class PerceptronModel(object):
 
         Returns: 1 or -1
         """
-        "*** TODO: COMPLETE HERE FOR QUESTION 1 ***"
+        return 1 if nn.as_scalar(self.run(x)) >= 0 else -1
 
     def train(self, dataset: PerceptronDataset) -> None:
         """
         Train the perceptron until convergence.
         """
-        "*** TODO: COMPLETE HERE FOR QUESTION 1 ***"
+        batch_size = 1
+        while True:
+            # Keep iterating until no updates are made in a full pass (convergence)
+            updated = False
+            for x, y in dataset.iterate_once(batch_size):
+                prediction = self.get_prediction(x)
+                target = nn.as_scalar(y)
+                if prediction != target:
+                    self.w.update(x, target)
+                    updated = True
+            if not updated:
+                break
 
 
 class RegressionModel(object):
@@ -53,9 +64,10 @@ class RegressionModel(object):
     """
 
     def __init__(self) -> None:
-        # Initialize your model parameters here
-        "*** TODO: COMPLETE HERE FOR QUESTION 2 ***"
-
+        self.w1 = nn.Parameter(1, 200)
+        self.b1 = nn.Parameter(1, 200)
+        self.w2 = nn.Parameter(200, 1)
+        self.b2 = nn.Parameter(1, 1)
     def run(self, x: nn.Constant) -> nn.Node:
         """
         Runs the model for a batch of examples.
@@ -65,7 +77,9 @@ class RegressionModel(object):
         Returns:
             A node with shape (batch_size x 1) containing predicted y-values
         """
-        "*** TODO: COMPLETE HERE FOR QUESTION 2 ***"
+        hidden = nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1))
+        predicted_y = nn.AddBias(nn.Linear(hidden, self.w2), self.b2)
+        return predicted_y
 
     def get_loss(self, x: nn.Constant, y: nn.Constant) -> nn.Node:
         """
@@ -77,13 +91,25 @@ class RegressionModel(object):
                 to be used for training
         Returns: a loss node
         """
-        "*** TODO: COMPLETE HERE FOR QUESTION 2 ***"
+        return nn.SquareLoss(self.run(x), y)
 
     def train(self, dataset: RegressionDataset) -> None:
         """
         Trains the model.
         """
-        "*** TODO: COMPLETE HERE FOR QUESTION 2 ***"
+        learning_rate = -0.1
+        batch_size = 50
+        for x, y in dataset.iterate_forever(batch_size):
+            loss = self.get_loss(x, y)
+            if nn.as_scalar(loss) < 0.02:
+                break
+            grad_w1, grad_b1, grad_w2, grad_b2 = nn.gradients(
+                loss, [self.w1, self.b1, self.w2, self.b2]
+            )
+            self.w1.update(grad_w1, learning_rate)
+            self.b1.update(grad_b1, learning_rate)
+            self.w2.update(grad_w2, learning_rate)
+            self.b2.update(grad_b2, learning_rate)
 
 
 class DigitClassificationModel(object):
