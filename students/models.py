@@ -128,8 +128,10 @@ class DigitClassificationModel(object):
     """
 
     def __init__(self) -> None:
-        # Initialize your model parameters here
-        "*** TODO: COMPLETE HERE FOR QUESTION 3 ***"
+        self.w1 = nn.Parameter(784, 200)
+        self.b1 = nn.Parameter(1, 200)
+        self.w2 = nn.Parameter(200, 10)
+        self.b2 = nn.Parameter(1, 10)
 
     def run(self, x: nn.Constant) -> nn.Node:
         """
@@ -145,7 +147,9 @@ class DigitClassificationModel(object):
             A node with shape (batch_size x 10) containing predicted scores
                 (also called logits)
         """
-        "*** TODO: COMPLETE HERE FOR QUESTION 3 ***"
+        hidden = nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1))
+        logits = nn.AddBias(nn.Linear(hidden, self.w2), self.b2)
+        return logits
 
     def get_loss(self, x: nn.Constant, y: nn.Constant) -> nn.Node:
         """
@@ -160,10 +164,23 @@ class DigitClassificationModel(object):
             y: a node with shape (batch_size x 10)
         Returns: a loss node
         """
-        "*** TODO: COMPLETE HERE FOR QUESTION 3 ***"
+        return nn.SoftmaxLoss(self.run(x), y)
 
     def train(self, dataset: DigitClassificationDataset) -> None:
         """
         Trains the model.
         """
-        "*** TODO: COMPLETE HERE FOR QUESTION 3 ***"
+        learning_rate = -0.5
+        batch_size = 100
+        while True:
+            for x, y in dataset.iterate_once(batch_size):
+                loss = self.get_loss(x, y)
+                grad_w1, grad_b1, grad_w2, grad_b2 = nn.gradients(
+                    loss, [self.w1, self.b1, self.w2, self.b2]
+                )
+                self.w1.update(grad_w1, learning_rate)
+                self.b1.update(grad_b1, learning_rate)
+                self.w2.update(grad_w2, learning_rate)
+                self.b2.update(grad_b2, learning_rate)
+            if dataset.get_validation_accuracy() >= 0.975:
+                break
